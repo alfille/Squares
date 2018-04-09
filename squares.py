@@ -114,7 +114,7 @@ class Tiling:
     BestSoFar=[]
     Draw=None
 
-    def __init__( self, dim, show=True ):
+    def __init__( self, dim, show=True, maximum=None ):
         if isinstance(dim,Tiling):
             # Child Tiling state
             parent = dim
@@ -150,6 +150,11 @@ class Tiling:
             if show:
                 Tiling.Draw = Draw(sx,sy)
             Tiling.BestSoFar = [ Square(x,y,1) for x in range( sx ) for y in range( sy ) ]
+            if maximum:
+                Tiling.maximum = maximum
+                print("Maximum",maximum)
+            else:
+                Tiling.maximum = min( sx-1, sy-1 )
 
             # Base Tiling state
             self.nmoves = 0
@@ -199,9 +204,13 @@ class Tiling:
         elif sx == sy:
             # square 
             h = max( int(sx/2) , 1 )
-            return [ Square(0,0,dx) for dx in range( sx-1,h,-1 ) ]+[ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(h,sx-x,sy-y),1),0,-1 ) ]
+            if Tiling.maximum > h:
+                return [ Square(0,0,dx) for dx in range( min(Tiling.maximum,sx-1),h,-1 ) ]+[ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(h,sx-x,sy-y), 1, Tiling.maximum ),0,-1 ) ]
+            else:
+                return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(Tiling.maximum,h,sx-x,sy-y), 1 ),0,-1 ) ]
+
         else:
-            return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(1,min(sx-x,sy-y,sx-1,sy,1)),0,-1 ) ]
+            return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(1, min(Tiling.maximum,sx-x,sy-y,sx-1,sy,1)),0,-1 ) ]
         
     @staticmethod
     def BestShow( ):
@@ -215,6 +224,7 @@ def CommandLine():
     cl = argparse.ArgumentParser(description="Fit Squares in large Square (rectangle) -- find fewest needed. 2018 by Paul H Alfille")
     cl.add_argument("N",help="Width of large rectangle (default 13)",type=int,nargs='?',default=13)
     cl.add_argument("M",help="Height of large rectangle (default square)",type=int,nargs='?',default=None)
+    cl.add_argument("-m","--MAX",help="Maximum size of tiling square allowed",type=int,nargs='?',default=None)
     cl.add_argument("-s","--SHOW",help="Show the solutions graphically",action="store_true")
     return cl.parse_args()
 
@@ -231,7 +241,14 @@ def main(args):
         else:
             M = args.M
         dim = (N,M)
-        s = Tiling( dim, show=args.SHOW )
+        if args.MAX:
+            maximum = args.MAX
+            if maximum >= N or maximum >= M or maximum < 1:
+                maximum = min(N,M)-1
+            print("Maximum tile size {:d}x{:d}".format(maximum,maximum))
+        else:
+            maximum = min(N,M)-1
+        s = Tiling( dim, show=args.SHOW, maximum = maximum )
         print("Fewest squares for {:d}x{:d} = {:d}".format(N,M,Tiling.MinMoves))
         if args.SHOW:
             Tiling.Draw.win.getMouse()
