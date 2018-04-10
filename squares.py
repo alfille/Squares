@@ -147,10 +147,12 @@ class Tiling:
     SideY = None
     BestSoFar=[]
     Draw=None
+    visited = 0
 
     def __init__( self, dim, show=True, maximum=None ):
         if isinstance(dim,Tiling):
             # Child Tiling state
+            Tiling.visited += 1
             parent = dim
             self.nmoves = parent.nmoves + 1
             if self.nmoves >= Tiling.MinMoves:
@@ -250,7 +252,10 @@ class Tiling:
         print( Tiling.MinMoves," ".join([m.string() for m in Tiling.BestSoFar]) )
         if Tiling.Show:
             Tiling.Draw.Show( Tiling.BestSoFar )
-        
+                
+    @staticmethod
+    def Report():
+        print("Fewest squares for {:d}x{:d} = {:d}  Trials={:d}".format(N,M,Tiling.MinMoves),Tiling.visited)
 
 class Filling:
     """ Holds the current position"""
@@ -260,10 +265,12 @@ class Filling:
     SideY = None
     SideZ = None
     BestSoFar=[]
+    visited = 0
 
     def __init__( self, dim, maximum=None ):
         if isinstance(dim,Filling):
             # Child Filling state
+            Filling.visited += 1
             parent = dim
             self.nmoves = parent.nmoves + 1
             if self.nmoves >= Filling.MinMoves:
@@ -363,6 +370,10 @@ class Filling:
     def BestShow( ):
         print( Filling.MinMoves," ".join([m.string() for m in Filling.BestSoFar]) )
         
+    @staticmethod
+    def Report():
+        print("Fewest cubes for {:d}x{:d}x{:d} = {:d}  Trials={:d}".format(N,M,O,Filling.MinMoves,Filling.visited))
+        
 
 def CommandLine():
     """Setup argparser object to process the command line"""
@@ -397,7 +408,7 @@ def main(args):
             maximum = min(N,M)-1
         if not args.CUBE:
             s = Tiling( dim, show=args.SHOW, maximum = maximum )
-            print("Fewest squares for {:d}x{:d} = {:d}".format(N,M,Tiling.MinMoves))
+            Tiling.Report()
             if args.SHOW:
                 Tiling.Draw.win.getMouse()
                 Tiling.Draw.win.close()
@@ -411,7 +422,7 @@ def main(args):
                 O = args.O
             dim = (N,M,O)
             s = Filling( dim, maximum = maximum )
-            print("Fewest cubes for {:d}x{:d}x{:d} = {:d}".format(N,M,O,Filling.MinMoves))
+            Filling.Report()
     return 0
 
 if __name__ == '__main__':
