@@ -255,7 +255,7 @@ class Tiling:
                 
     @staticmethod
     def Report():
-        print("Fewest squares for {:d}x{:d} = {:d}  Trials={:d}".format(N,M,Tiling.MinMoves),Tiling.visited)
+        print("Fewest squares for {:d}x{:d} = {:d}  Trials={:d}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited))
 
 class Filling:
     """ Holds the current position"""
@@ -372,7 +372,7 @@ class Filling:
         
     @staticmethod
     def Report():
-        print("Fewest cubes for {:d}x{:d}x{:d} = {:d}  Trials={:d}".format(N,M,O,Filling.MinMoves,Filling.visited))
+        print("Fewest cubes for {:d}x{:d}x{:d} = {:d}  Trials={:d}".format(Filling.SideX,Filling.SideY,Filling.SideZ,Filling.MinMoves,Filling.visited))
         
 
 def CommandLine():
