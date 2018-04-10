@@ -104,10 +104,44 @@ class Square:
     def string( self):
         return "< {:d}x{:d}-{:d} >".format(self.x,self.y,self.dx)
 
+class Cube:
+    """Holds x,y,z and dx=side length"""
+    def __init__( self, x, y, z, dx ):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.dx = dx
+        
+    def disjoint( self, other ):
+        """Do the squares not overlap at all?"""
+        if self.x >= other.x + other.dx:
+            return True
+        elif self.y >= other.y + other.dx:
+            return True
+        elif self.z >= other.z + other.dx:
+            return True
+        elif other.x >= self.x + self.dx:
+            return True
+        elif other.y >= self.y + self.dx:
+            return True
+        elif other.z >= self.z + self.dx:
+            return True
+        else:
+            return False
+            
+    def differentstart( self, other ):
+        """ Upper left corner different?"""
+        return self.x!=other.x or self.y!=other.y or self.z!=other.z
+            
+    def size( self ):
+        return self.dx * self.dx * self.dx
+        
+    def string( self):
+        return "< {:d}x{:d}x{:d}-{:d} >".format(self.x,self.y,self.z,self.dx)
+
 class Tiling:
     """ Holds the current position"""
     MinMoves = None
-    Dim=None
     Size = None
     SideX = None
     SideY = None
@@ -143,7 +177,6 @@ class Tiling:
             # set class vars
             Tiling.SideX = sx
             Tiling.SideY = sy
-            Tiling.Dim = dim
             Tiling.MinMoves = sx * sy
             Tiling.Size = sx * sy
             Tiling.Show = show
@@ -205,12 +238,12 @@ class Tiling:
             # square 
             h = max( int(sx/2) , 1 )
             if Tiling.maximum > h:
-                return [ Square(0,0,dx) for dx in range( min(Tiling.maximum,sx-1),h,-1 ) ]+[ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(h,sx-x,sy-y), 1, Tiling.maximum ),0,-1 ) ]
+                return [ Square(0,0,dx) for dx in range( min(Tiling.maximum,sx-1),h,-1 ) ]+[ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(h,sx-x,sy-y,Tiling.maximum), 1 ),0,-1 ) ]
             else:
                 return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(Tiling.maximum,h,sx-x,sy-y), 1 ),0,-1 ) ]
 
         else:
-            return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(1, min(Tiling.maximum,sx-x,sy-y,sx-1,sy,1)),0,-1 ) ]
+            return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(1, min(Tiling.maximum,sx-x,sy-y,sx-1,sy-1)),0,-1 ) ]
         
     @staticmethod
     def BestShow( ):
@@ -219,13 +252,127 @@ class Tiling:
             Tiling.Draw.Show( Tiling.BestSoFar )
         
 
+class Filling:
+    """ Holds the current position"""
+    MinMoves = None
+    Size = None
+    SideX = None
+    SideY = None
+    SideZ = None
+    BestSoFar=[]
+
+    def __init__( self, dim, maximum=None ):
+        if isinstance(dim,Filling):
+            # Child Filling state
+            parent = dim
+            self.nmoves = parent.nmoves + 1
+            if self.nmoves >= Filling.MinMoves:
+                raise PruneError
+            s = parent.sqlist[0]
+
+            self.Moves = parent.Moves+[s]
+            self.coverage = parent.coverage + s.size()
+            #print(s.string(),self.nmoves,self.coverage)
+            if self.coverage == Filling.Size:
+                # New best
+                Filling.MinMoves = self.nmoves
+                Filling.BestSoFar = self.Moves[:]
+                self.BestShow()
+            else:
+                self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
+                #self.SqlistShow()
+                self.TryAll()
+        else:
+            # initial Filling state
+            sx = dim[0]
+            sy = dim[1]
+            sz = dim[2]
+
+            # set class vars
+            Filling.SideX = sx
+            Filling.SideY = sy
+            Filling.SideZ = sz
+            Filling.MinMoves = sx * sy * sz
+            Filling.Size = sx * sy * sz
+            Filling.BestSoFar = [ Cube(x,y,z,1) for x in range( sx ) for y in range( sy ) for z in range( sz ) ]
+            if maximum:
+                Filling.maximum = maximum
+                print("Maximum",maximum)
+            else:
+                Filling.maximum = min( sx-1, sy-1 , sz-1 )
+
+            # Base Filling state
+            self.nmoves = 0
+            self.Moves = []
+            self.coverage = 0
+            self.sqlist = self.Sqlist_rankorder()
+            #self.SqlistShow()
+            
+            # Start the recursion
+            self.TryAll()
+
+    def TryAll(self):
+        """ Recursive search
+        but limit to same starting stop (upper left of free spaces
+        which is easy sine sqlist is sorted that way
+        """
+        if self.sqlist:
+            index_sq = self.sqlist[0]
+        while self.sqlist:
+            if index_sq.differentstart( self.sqlist[0] ):
+                # the upperleft choices are exhausted
+                break
+            try:
+                Filling( self )
+            except PruneError:
+                # Not optimal
+                pass
+            self.sqlist = self.sqlist[1:]
+            
+    def SqlistShow( self ):
+        print( " ".join([m.string() for m in self.sqlist]) )
+        
+    def Sqlist_rankorder( self ):
+        """ Create a list of all squares
+        left->right
+        top->down
+        big->small
+        Also, only the first square can be larger than 1/2 the size
+        """
+        sx = Filling.SideX
+        sy = Filling.SideY
+        sz = Filling.SideZ
+        if sx == 1:
+            return []
+        elif sy == 1:
+            return []
+        elif sz == 1:
+            return []
+        elif sx == sy and sx == sz:
+            # Cube 
+            h = max( int(sx/2) , 1 )
+            if Filling.maximum > h:
+                return [ Cube(0,0,0,dx) for dx in range( min(Filling.maximum,sx-1),h,-1 ) ]+[ Cube(x,y,z,dx) for x in range( sx ) for y in range( sy ) for z in range( sz ) for dx in range( max(min(h,sx-x,sy-y,sz-z,Filling.maximum), 1 ),0,-1 ) ]
+            else:
+                return [ Cube(x,y,z,dx) for x in range( sx ) for y in range( sy ) for z in range( sz ) for dx in range( max(min(Filling.maximum,h,sx-x,sy-y,sz-z), 1 ),0,-1 ) ]
+
+        else:
+            return [ Cube(x,y,z,dx) for x in range( sx ) for y in range( sy ) for z in range( sz ) for dx in range( max(1, min(Filling.maximum,sx-x,sy-y,sz-z,sx-1,sy-1,sz-1)),0,-1 ) ]
+        
+    @staticmethod
+    def BestShow( ):
+        print( Filling.MinMoves," ".join([m.string() for m in Filling.BestSoFar]) )
+        
+
 def CommandLine():
     """Setup argparser object to process the command line"""
     cl = argparse.ArgumentParser(description="Fit Squares in large Square (rectangle) -- find fewest needed. 2018 by Paul H Alfille")
-    cl.add_argument("N",help="Width of large rectangle (default 13)",type=int,nargs='?',default=13)
-    cl.add_argument("M",help="Height of large rectangle (default square)",type=int,nargs='?',default=None)
+    cl.add_argument("N",help="Width of large box (default 13)",type=int,nargs='?',default=13)
+    cl.add_argument("M",help="Height of large box (default Cube)",type=int,nargs='?',default=None)
+    cl.add_argument("O",help="Depth of large box (default Cube)",type=int,nargs='?',default=None)
     cl.add_argument("-m","--MAX",help="Maximum size of tiling square allowed",type=int,nargs='?',default=None)
     cl.add_argument("-s","--SHOW",help="Show the solutions graphically",action="store_true")
+    cl.add_argument("-3","--CUBE",help="3-D solution -- cubes",action="store_true")
     return cl.parse_args()
 
 
@@ -248,11 +395,23 @@ def main(args):
             print("Maximum tile size {:d}x{:d}".format(maximum,maximum))
         else:
             maximum = min(N,M)-1
-        s = Tiling( dim, show=args.SHOW, maximum = maximum )
-        print("Fewest squares for {:d}x{:d} = {:d}".format(N,M,Tiling.MinMoves))
-        if args.SHOW:
-            Tiling.Draw.win.getMouse()
-            Tiling.Draw.win.close()
+        if not args.CUBE:
+            s = Tiling( dim, show=args.SHOW, maximum = maximum )
+            print("Fewest squares for {:d}x{:d} = {:d}".format(N,M,Tiling.MinMoves))
+            if args.SHOW:
+                Tiling.Draw.win.getMouse()
+                Tiling.Draw.win.close()
+        else:
+            # 3-D
+            if not args.O:
+                O = M
+            elif args.O < 1:
+                O = M
+            else:
+                O = args.O
+            dim = (N,M,O)
+            s = Filling( dim, maximum = maximum )
+            print("Fewest cubes for {:d}x{:d}x{:d} = {:d}".format(N,M,O,Filling.MinMoves))
     return 0
 
 if __name__ == '__main__':
