@@ -24,6 +24,8 @@
 
 """ Version a
 No First square optimization
+Test with
+for n in {1..22} ; do ./squares_a.py -q -q $n >> time_a ; done
 """
 
 class Error(Exception):

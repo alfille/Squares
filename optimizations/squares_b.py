@@ -24,6 +24,8 @@
 
 """ _b version
 Optimize first quare is the largest
+Test with
+for n in {1..22} ; do ./squares_b.py -q -q $n >> time_b ; done
 """
 
 
