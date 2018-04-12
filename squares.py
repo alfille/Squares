@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 #  squares.py
@@ -33,6 +33,16 @@ class PruneError(Error):
 
     def __init__(self):
         pass
+
+class Globals:
+    """ Global parameters """
+    show = False # Show graphically
+    maximum = None # maximum size of inset square
+    quiet = 0 # Quiet state
+    # 0 show everything
+    # 1 no intermediates
+    # 2 no solution (just solution number)
+    # 3 CVS output: sides,solution number,visited,time
         
 class Draw:
     side = 10
@@ -149,7 +159,7 @@ class Tiling:
     Draw=None
     visited = 0
 
-    def __init__( self, dim, show=True, maximum=None ):
+    def __init__( self, dim ):
         if isinstance(dim,Tiling):
             # Child Tiling state
             Tiling.visited += 1
@@ -166,7 +176,8 @@ class Tiling:
                 # New best
                 Tiling.MinMoves = self.nmoves
                 Tiling.BestSoFar = self.Moves[:]
-                self.BestShow()
+                if Globals.quiet == 0:
+                    self.BestShow()
             else:
                 self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
                 #self.SqlistShow()
@@ -181,15 +192,11 @@ class Tiling:
             Tiling.SideY = sy
             Tiling.MinMoves = sx * sy
             Tiling.Size = sx * sy
-            Tiling.Show = show
-            if show:
+            if Globals.show:
                 Tiling.Draw = Draw(sx,sy)
             Tiling.BestSoFar = [ Square(x,y,1) for x in range( sx ) for y in range( sy ) ]
-            if maximum:
-                Tiling.maximum = maximum
-                print("Maximum",maximum)
-            else:
-                Tiling.maximum = min( sx-1, sy-1 )
+            if not Globals.maximum:
+                Globals.maximum = min( sx-1, sy-1 )
 
             # Base Tiling state
             self.nmoves = 0
@@ -239,23 +246,28 @@ class Tiling:
         elif sx == sy:
             # square 
             h = max( int(sx/2) , 1 )
-            if Tiling.maximum > h:
-                return [ Square(0,0,dx) for dx in range( min(Tiling.maximum,sx-1),h,-1 ) ]+[ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(h,sx-x,sy-y,Tiling.maximum), 1 ),0,-1 ) ]
+            if Globals.maximum > h:
+                return [ Square(0,0,dx) for dx in range( min(Globals.maximum,sx-1),h,-1 ) ]+[ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(h,sx-x,sy-y,Globals.maximum), 1 ),0,-1 ) ]
             else:
-                return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(Tiling.maximum,h,sx-x,sy-y), 1 ),0,-1 ) ]
+                return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(Globals.maximum,h,sx-x,sy-y), 1 ),0,-1 ) ]
 
         else:
-            return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(1, min(Tiling.maximum,sx-x,sy-y,sx-1,sy-1)),0,-1 ) ]
+            return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(1, min(Globals.maximum,sx-x,sy-y,sx-1,sy-1)),0,-1 ) ]
         
     @staticmethod
     def BestShow( ):
         print( Tiling.MinMoves," ".join([m.string() for m in Tiling.BestSoFar]) )
-        if Tiling.Show:
+        if Globals.show:
             Tiling.Draw.Show( Tiling.BestSoFar )
                 
     @staticmethod
     def Report():
-        print("Fewest squares for {:d}x{:d} = {:d}  Trials={:d}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited))
+        if Globals.quiet == 1:
+            Tiling.BestShow()
+        if Globals.quiet < 2:
+            print("Fewest squares for {:d}x{:d} = {:d}  Trials={:d} Time={:f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time.process_time()))
+        else:
+            print("{:d},{:d},{:d},{:d},{:f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time.process_time()))
 
 class Filling:
     """ Holds the current position"""
@@ -267,7 +279,7 @@ class Filling:
     BestSoFar=[]
     visited = 0
 
-    def __init__( self, dim, maximum=None ):
+    def __init__( self, dim ):
         if isinstance(dim,Filling):
             # Child Filling state
             Filling.visited += 1
@@ -284,7 +296,8 @@ class Filling:
                 # New best
                 Filling.MinMoves = self.nmoves
                 Filling.BestSoFar = self.Moves[:]
-                self.BestShow()
+                if Globals.quiet == 0:
+                    self.BestShow()
             else:
                 self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
                 #self.SqlistShow()
@@ -302,11 +315,8 @@ class Filling:
             Filling.MinMoves = sx * sy * sz
             Filling.Size = sx * sy * sz
             Filling.BestSoFar = [ Cube(x,y,z,1) for x in range( sx ) for y in range( sy ) for z in range( sz ) ]
-            if maximum:
-                Filling.maximum = maximum
-                print("Maximum",maximum)
-            else:
-                Filling.maximum = min( sx-1, sy-1 , sz-1 )
+            if not Globals.maximum:
+                Globals.maximum = min( sx-1, sy-1 , sz-1 )
 
             # Base Filling state
             self.nmoves = 0
@@ -358,13 +368,13 @@ class Filling:
         elif sx == sy and sx == sz:
             # Cube 
             h = max( int(sx/2) , 1 )
-            if Filling.maximum > h:
-                return [ Cube(0,0,0,dx) for dx in range( min(Filling.maximum,sx-1),h,-1 ) ]+[ Cube(x,y,z,dx) for x in range( sx ) for y in range( sy ) for z in range( sz ) for dx in range( max(min(h,sx-x,sy-y,sz-z,Filling.maximum), 1 ),0,-1 ) ]
+            if Globals.maximum > h:
+                return [ Cube(0,0,0,dx) for dx in range( min(Globals.maximum,sx-1),h,-1 ) ]+[ Cube(x,y,z,dx) for x in range( sx ) for y in range( sy ) for z in range( sz ) for dx in range( max(min(h,sx-x,sy-y,sz-z,Globals.maximum), 1 ),0,-1 ) ]
             else:
-                return [ Cube(x,y,z,dx) for x in range( sx ) for y in range( sy ) for z in range( sz ) for dx in range( max(min(Filling.maximum,h,sx-x,sy-y,sz-z), 1 ),0,-1 ) ]
+                return [ Cube(x,y,z,dx) for x in range( sx ) for y in range( sy ) for z in range( sz ) for dx in range( max(min(Globals.maximum,h,sx-x,sy-y,sz-z), 1 ),0,-1 ) ]
 
         else:
-            return [ Cube(x,y,z,dx) for x in range( sx ) for y in range( sy ) for z in range( sz ) for dx in range( max(1, min(Filling.maximum,sx-x,sy-y,sz-z,sx-1,sy-1,sz-1)),0,-1 ) ]
+            return [ Cube(x,y,z,dx) for x in range( sx ) for y in range( sy ) for z in range( sz ) for dx in range( max(1, min(Globals.maximum,sx-x,sy-y,sz-z,sx-1,sy-1,sz-1)),0,-1 ) ]
         
     @staticmethod
     def BestShow( ):
@@ -372,7 +382,12 @@ class Filling:
         
     @staticmethod
     def Report():
-        print("Fewest cubes for {:d}x{:d}x{:d} = {:d}  Trials={:d}".format(Filling.SideX,Filling.SideY,Filling.SideZ,Filling.MinMoves,Filling.visited))
+        if Globals.quiet == 1:
+            Filling.BestShow()
+        if Globals.quiet < 2:
+            print("Fewest cubes for {:d}x{:d}x{:d} = {:d}  Trials={:d} Time={:f}".format(Filling.SideX,Filling.SideY,Filling.SideZ,Filling.MinMoves,Filling.visited,time.proceess_time()))
+        else:
+            print("{:d},{:d},{:d},{:d},{:d},{:f}".format(Filling.SideX,Filling.SideY,Filling.SideZ,Filling.MinMoves,Filling.visited,time.proceess_time()))
         
 
 def CommandLine():
@@ -381,14 +396,19 @@ def CommandLine():
     cl.add_argument("N",help="Width of large box (default 13)",type=int,nargs='?',default=13)
     cl.add_argument("M",help="Height of large box (default Cube)",type=int,nargs='?',default=None)
     cl.add_argument("O",help="Depth of large box (default Cube)",type=int,nargs='?',default=None)
-    cl.add_argument("-m","--MAX",help="Maximum size of tiling square allowed",type=int,nargs='?',default=None)
-    cl.add_argument("-s","--SHOW",help="Show the solutions graphically",action="store_true")
-    cl.add_argument("-3","--CUBE",help="3-D solution -- cubes",action="store_true")
+    cl.add_argument("-m","--maximum",help="Maximum size of tiling square allowed",type=int,nargs='?',default=None)
+    cl.add_argument("-s","--show",help="Show the solutions graphically",action="store_true")
+    cl.add_argument("-3","--cube",help="3-D solution -- cubes",action="store_true")
+    cl.add_argument("-q","--quiet",help="Suppress more and more displayed info (can be repeated)",action="count")
     return cl.parse_args()
-
 
 def main(args):
     args = CommandLine() # Get args from command line
+
+    if args.show:
+        Globals.show = True
+    if args.quiet:
+        Globals.quiet = args.quiet
     
     if args.N > 0:
         N = args.N
@@ -399,17 +419,17 @@ def main(args):
         else:
             M = args.M
         dim = (N,M)
-        if args.MAX:
-            maximum = args.MAX
-            if maximum >= N or maximum >= M or maximum < 1:
-                maximum = min(N,M)-1
-            print("Maximum tile size {:d}x{:d}".format(maximum,maximum))
+        if args.maximum:
+            Globals.maximum = args.maximum
+            if Globals.maximum >= N or Globals.maximum >= M or Globals.maximum < 1:
+                Globals.maximum = min(N,M)-1
+            print("Maximum tile size {:d}x{:d}".format(Globals.maximum,Globals.maximum))
         else:
-            maximum = min(N,M)-1
-        if not args.CUBE:
-            s = Tiling( dim, show=args.SHOW, maximum = maximum )
+            Globals.maximum = min(N,M)-1
+        if not args.cube:
+            s = Tiling( dim )
             Tiling.Report()
-            if args.SHOW:
+            if Globals.show:
                 Tiling.Draw.win.getMouse()
                 Tiling.Draw.win.close()
         else:
@@ -421,7 +441,7 @@ def main(args):
             else:
                 O = args.O
             dim = (N,M,O)
-            s = Filling( dim, maximum = maximum )
+            s = Filling( dim )
             Filling.Report()
     return 0
 
