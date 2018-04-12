@@ -186,6 +186,9 @@ class Tiling:
                 if Globals.quiet == 0:
                     self.BestShow()
             else:
+                if self.coverage not in Tiling.squares and self.nmoves == Tiling.MinMoves - 1:
+                    # non square number of empties. At least 2 more needed
+                    raise PruneError
                 self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
                 #self.SqlistShow()
                 self.TryAll()
@@ -199,6 +202,7 @@ class Tiling:
             Tiling.SideY = sy
             Tiling.MinMoves = sx * sy
             Tiling.Size = sx * sy
+            Tiling.squares = set( [x*x for x in range(1,max(sx,sy))])
             if Globals.show:
                 Tiling.Draw = Draw(sx,sy)
             Tiling.BestSoFar = [ Square(x,y,1) for x in range( sx ) for y in range( sy ) ]
@@ -306,7 +310,10 @@ class Filling:
                 if Globals.quiet == 0:
                     self.BestShow()
             else:
-                self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
+                if self.coverage not in Filling.cubes and self.nmoves == Filling.MinMoves - 1:
+                    # non square number of empties. At least 2 more needed
+                    raise PruneError
+                 self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
                 #self.SqlistShow()
                 self.TryAll()
         else:
@@ -321,6 +328,7 @@ class Filling:
             Filling.SideZ = sz
             Filling.MinMoves = sx * sy * sz
             Filling.Size = sx * sy * sz
+            Filling.cubes = set( [x*xX for x in range(1,max(sx,sy,sz))])
             Filling.BestSoFar = [ Cube(x,y,z,1) for x in range( sx ) for y in range( sy ) for z in range( sz ) ]
             if not Globals.maximum:
                 Globals.maximum = min( sx-1, sy-1 , sz-1 )
