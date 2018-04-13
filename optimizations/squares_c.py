@@ -313,7 +313,7 @@ class Filling:
                 if self.coverage not in Filling.cubes and self.nmoves == Filling.MinMoves - 1:
                     # non square number of empties. At least 2 more needed
                     raise PruneError
-                 self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
+                self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
                 #self.SqlistShow()
                 self.TryAll()
         else:
