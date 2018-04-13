@@ -23,9 +23,11 @@
 #  
 
 """ _d version
-Symmetry checks
+Optimize first square is the largest
+Remaining space not a perfect square means 2 more
+Left upper corner largest corner
 Test with
-for n in {1..22} ; do ./squares_d.py -q -q $n >> time_d ; done
+for n in {1..22} ; do ./squares_c.py -q -q $n >> time_c ; done
 """
 
 
@@ -49,7 +51,7 @@ class Globals:
     # 1 no intermediates
     # 2 no solution (just solution number)
     # 3 CVS output: sides,solution number,visited,time
-    
+        
 class Draw:
     side = 10
     N = None # X side
@@ -117,14 +119,6 @@ class Square:
     def size( self ):
         return self.dx * self.dx
         
-    def mirror( self ):
-        return Square( self.y, self.x, self.dx )
-    
-    def not_larger( self, other ):
-        if self.x != other.x or self.y != other.y:
-            return True
-        return self.dx < other.dx
-        
     def string( self):
         return "< {:d}x{:d}-{:d} >".format(self.x,self.y,self.dx)
 
@@ -173,8 +167,7 @@ class Tiling:
     Draw=None
     visited = 0
 
-    def __init__( self, dim, symmetry = None ):
-#        print(symmetry)
+    def __init__( self, dim ):
         if isinstance(dim,Tiling):
             # Child Tiling state
             Tiling.visited += 1
@@ -182,7 +175,19 @@ class Tiling:
             self.nmoves = parent.nmoves + 1
             if self.nmoves >= Tiling.MinMoves:
                 raise PruneError
+
             s = parent.sqlist[0]
+
+            if s.x+s.dx == Tiling.SideX:
+                # Right edge
+                if s.y == 0 or s.y+s.dx == Tiling.SideY:
+                    if s.dx > parent.Moves[0].dx:
+                        raise PruneError
+            elif s.x == 0:
+                # Left edge
+                if s.y+s.dx == Tiling.SideY:
+                    if s.dx > parent.Moves[0].dx:
+                        raise PruneError
 
             self.Moves = parent.Moves+[s]
             self.coverage = parent.coverage - s.size()
@@ -198,28 +203,7 @@ class Tiling:
                     # non square number of empties. At least 2 more needed
                     raise PruneError
                 self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
-                
-                if symmetry == 0:
-                    # initial square
-                    self.symmetry = 1 # start of symmetrical pair
-                elif symmetry == 1:
-                    # initial symmetry element
-                    ss = s.mirror()
-                    if ss.disjoint(s):
-                        # Pair possible
-                        sq = [ m for m in self.sqlist if m.not_larger(ss) ]
-                        self.sqlist = [ss]+sq
-                        Tiling( self, symmetry = 2 ) # First the symmetry pair
-                        self.symmetry = 3 # Assymetry now
-                        self.sqlist = sq
-                    else:
-                        self.symmetry = 3
-                elif symmetry == 2:
-                    # pair just done, back in symmetry
-                    self.symmetry = 1
                 #self.SqlistShow()
-                else:
-                    self.symmetry = 3
                 self.TryAll()
         else:
             # initial Tiling state
@@ -243,7 +227,6 @@ class Tiling:
             self.Moves = []
             self.coverage = Tiling.Size
             self.sqlist = self.Sqlist_rankorder()
-            self.symmetry = 0 # Initial state (first square, symmetric by definition)
             #self.sqlist=[ Square(x,y,dx) for dx in range(min(int((sx+1)/2),sx-1),0,-1) for x in range(sx+1-dx) for y in range(sy+1-dx) ]
             #self.SqlistShow()
             
@@ -253,7 +236,7 @@ class Tiling:
     def TryAll(self):
         """ Recursive search
         but limit to same starting stop (upper left of free spaces
-        which is easy since sqlist is sorted that way
+        which is easy sine sqlist is sorted that way
         """
         if self.sqlist:
             index_sq = self.sqlist[0]
@@ -262,7 +245,7 @@ class Tiling:
                 # the upperleft choices are exhausted
                 break
             try:
-                Tiling( self, symmetry = self.symmetry )
+                Tiling( self )
             except PruneError:
                 # Not optimal
                 pass
