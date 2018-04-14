@@ -22,6 +22,15 @@
 #  
 #  
 
+""" _e version
+Optimize first square is the largest
+Remaining space not a perfect square means 2 more
+Left upper corner largest corner
+Full symmetry test
+Test with
+for n in {1..22} ; do ./squares_c.py -q -q $n >> time_c ; done
+"""
+
 
 class Error(Exception):
     """Base class for exceptions in this module."""
@@ -111,6 +120,10 @@ class Square:
     def size( self ):
         return self.dx * self.dx
         
+    def mirror(self):
+        """Square made by flipping on diagonal axis"""
+        return Square(self.y,self.x,self.dx)
+        
     def string( self):
         return "< {:d}x{:d}-{:d} >".format(self.x,self.y,self.dx)
 
@@ -167,19 +180,60 @@ class Tiling:
             self.nmoves = parent.nmoves + 1
             if self.nmoves >= Tiling.MinMoves:
                 raise PruneError
-            s = parent.sqlist[0]
 
-            self.Moves = parent.Moves+[s]
-            self.coverage = parent.coverage + s.size()
-            #print(s.string(),self.nmoves,self.coverage)
-            if self.coverage == Tiling.Size:
+            active_sq   = parent.sqlist[0]
+
+            if active_sq.x+active_sq.dx == Tiling.SideX:
+                # Right edge
+                if active_sq.y == 0 or active_sq.y+active_sq.dx == Tiling.SideY:
+                    if active_sq.dx > parent.Moves[0].dx:
+                        raise PruneError
+            elif active_sq.x == 0:
+                # Left edge
+                if active_sq.y+active_sq.dx == Tiling.SideY:
+                    if active_sq.dx > parent.Moves[0].dx:
+                        raise PruneError
+
+            self.Moves = parent.Moves+[active_sq]
+            self.coverage = parent.coverage - active_sq.size()
+            #print(active_sq  .string(),self.nmoves,self.coverage)
+            if self.coverage == 0:
                 # New best
                 Tiling.MinMoves = self.nmoves
                 Tiling.BestSoFar = self.Moves[:]
                 if Globals.quiet == 0:
                     self.BestShow()
             else:
-                self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
+                if self.coverage not in Tiling.squares and self.nmoves == Tiling.MinMoves - 1:
+                    # non square number of empties. At least 2 more needed
+                    raise PruneError
+                if parent.symmetry:
+                    # still possibly symmetric
+                    if active_sq.x > active_sq.y:
+                        # upper right diagonal
+                        if active_sq.y + active_sq.dx > active_sq.x:
+                            # crosses diagonal
+                            self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) ]
+                        else:
+                            # prune mirror
+                            self.symmetry = True
+                            self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) and ( active_sq.y != m.x or active_sq.x != m.y or active_sq.dx >= m.dx ) ]
+                    elif active_sq.x < active_sq.y:
+                        # Lower left diagonal -- find mirror and test if size matches
+                        self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) ]
+                        self.symmetry = False
+                        for m in parent.Moves():
+                            if active_sq.x == m.y and active_sq.y == m.x:
+                                self.symmetry = (active_sq.dx == m.dx)
+                                break ; 
+                    else:
+                        # On diagonal, just pass on symmetry state
+                        self.symmetry = True
+                        self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) ]
+                else:
+                    # already assymetric
+                    self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) ]
+
                 #self.SqlistShow()
                 self.TryAll()
         else:
@@ -192,6 +246,7 @@ class Tiling:
             Tiling.SideY = sy
             Tiling.MinMoves = sx * sy
             Tiling.Size = sx * sy
+            Tiling.squares = set( [x*x for x in range(1,max(sx,sy))])
             if Globals.show:
                 Tiling.Draw = Draw(sx,sy)
             Tiling.BestSoFar = [ Square(x,y,1) for x in range( sx ) for y in range( sy ) ]
@@ -201,10 +256,10 @@ class Tiling:
             # Base Tiling state
             self.nmoves = 0
             self.Moves = []
-            self.coverage = 0
+            self.coverage = Tiling.Size
             self.sqlist = self.Sqlist_rankorder()
-            #self.sqlist=[ Square(x,y,dx) for dx in range(min(int((sx+1)/2),sx-1),0,-1) for x in range(sx+1-dx) for y in range(sy+1-dx) ]
-            #self.SqlistShow()
+            # assume symmetric until assymatric element found (or uneven sides)
+            self.symmetry = ( sx == sy ) 
             
             # Start the recursion
             self.TryAll()
@@ -290,15 +345,18 @@ class Filling:
             s = parent.sqlist[0]
 
             self.Moves = parent.Moves+[s]
-            self.coverage = parent.coverage + s.size()
+            self.coverage = parent.coverage - s.size()
             #print(s.string(),self.nmoves,self.coverage)
-            if self.coverage == Filling.Size:
+            if self.coverage == 0:
                 # New best
                 Filling.MinMoves = self.nmoves
                 Filling.BestSoFar = self.Moves[:]
                 if Globals.quiet == 0:
                     self.BestShow()
             else:
+                if self.coverage not in Filling.cubes and self.nmoves == Filling.MinMoves - 1:
+                    # non square number of empties. At least 2 more needed
+                    raise PruneError
                 self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
                 #self.SqlistShow()
                 self.TryAll()
@@ -314,6 +372,7 @@ class Filling:
             Filling.SideZ = sz
             Filling.MinMoves = sx * sy * sz
             Filling.Size = sx * sy * sz
+            Filling.cubes = set( [x*xX for x in range(1,max(sx,sy,sz))])
             Filling.BestSoFar = [ Cube(x,y,z,1) for x in range( sx ) for y in range( sy ) for z in range( sz ) ]
             if not Globals.maximum:
                 Globals.maximum = min( sx-1, sy-1 , sz-1 )
@@ -321,7 +380,7 @@ class Filling:
             # Base Filling state
             self.nmoves = 0
             self.Moves = []
-            self.coverage = 0
+            self.coverage = Filling.Size
             self.sqlist = self.Sqlist_rankorder()
             #self.SqlistShow()
             
