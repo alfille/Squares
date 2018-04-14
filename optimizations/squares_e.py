@@ -453,7 +453,7 @@ def CommandLine():
     """Setup argparser object to process the command line"""
     cl = argparse.ArgumentParser(description="Fit Squares in large Square (rectangle) -- find fewest needed. 2018 by Paul H Alfille")
     cl.add_argument("N",help="Width of large box (default 13)",type=int,nargs='?',default=13)
-    cl.add_argument("M",help="Height of large box (default Cube)",type=int,nargs='?',default=None)
+    cl.add_argument("M",help="Height of large box (default Square)",type=int,nargs='?',default=None)
     cl.add_argument("O",help="Depth of large box (default Cube)",type=int,nargs='?',default=None)
     cl.add_argument("-m","--maximum",help="Maximum size of tiling square allowed",type=int,nargs='?',default=None)
     cl.add_argument("-s","--show",help="Show the solutions graphically",action="store_true")
