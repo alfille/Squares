@@ -163,6 +163,7 @@ class Tiling:
     SideX = None
     SideY = None
     BestSoFar=[]
+    BestTime = None
     Draw=None
     visited = 0
 
@@ -174,22 +175,23 @@ class Tiling:
             self.nmoves = parent.nmoves + 1
             if self.nmoves >= Tiling.MinMoves:
                 raise PruneError
-            s = parent.sqlist[0]
+            active_sq = parent.sqlist[0]
 
-            self.Moves = parent.Moves+[s]
-            self.coverage = parent.coverage - s.size()
-            #print(s.string(),self.nmoves,self.coverage)
+            self.Moves = parent.Moves+[active_sq]
+            self.coverage = parent.coverage - active_sq.size()
+            #print(active_sq.string(),self.nmoves,self.coverage)
             if self.coverage == 0:
                 # New best
                 Tiling.MinMoves = self.nmoves
                 Tiling.BestSoFar = self.Moves[:]
+                Tiling.BestTime = time.process_time() # time of best solution
                 if Globals.quiet == 0:
                     self.BestShow()
             else:
                 if self.coverage not in Tiling.squares and self.nmoves == Tiling.MinMoves - 1:
                     # non square number of empties. At least 2 more needed
                     raise PruneError
-                self.sqlist = [ m for m in parent.sqlist[1:] if s.disjoint(m) ]
+                self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) ]
                 #self.SqlistShow()
                 self.TryAll()
         else:
@@ -258,10 +260,10 @@ class Tiling:
             # square 
             h = max( int(sx/2) , 1 )
             if Globals.maximum > h:
-                return [ Square(0,0,dx) for dx in range( min(Globals.maximum,sx-1),h,-1 ) ]+[ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(h,sx-x,sy-y,Globals.maximum), 1 ),0,-1 ) ]
+                r = [ Square(0,0,dx) for dx in range( min(Globals.maximum,sx-1),h,-1 ) ]+[ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(h,sx-x,sy-y,Globals.maximum), 1 ),0,-1 ) ]
             else:
-                return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(Globals.maximum,h,sx-x,sy-y), 1 ),0,-1 ) ]
-
+                r = [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(Globals.maximum,h,sx-x,sy-y), 1 ),0,-1 ) ]
+            return [ m for m in r if m.x != 0 or m.y != 0 or m.dx != 1 ]
         else:
             return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(1, min(Globals.maximum,sx-x,sy-y,sx-1,sy-1)),0,-1 ) ]
         
@@ -273,12 +275,14 @@ class Tiling:
                 
     @staticmethod
     def Report():
+        time_solve = time.process_time()
+        check_frac = Tiling.BestTime/time_solve
         if Globals.quiet == 1:
             Tiling.BestShow()
         if Globals.quiet < 2:
-            print("Fewest squares for {:d}x{:d} = {:d}  Trials={:d} Time={:f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time.process_time()))
+            print("Fewest squares for {:d}x{:d} = {:d}  Trials={:d} Time={:f} Solve/Check={:4.2f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time_solve,check_frac))
         else:
-            print("{:d},{:d},{:d},{:d},{:f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time.process_time()))
+            print("{:d},{:d},{:d},{:d},{:f},{:4.2f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time_solve,check_frac))
 
 class Filling:
     """ Holds the current position"""
