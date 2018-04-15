@@ -22,13 +22,14 @@
 #  
 #  
 
-""" _e version
+""" _f version
+Much more complete remaining space check
 Optimize first square is the largest
 Remaining space not a perfect square means 2 more
 Left upper corner largest corner
 Full symmetry test
 Test with
-for n in {1..22} ; do ./squares_c.py -q -q $n >> time_c ; done
+for n in {1..22} ; do ./squares_f.py -q -q $n >> time_f ; done
 """
 
 
@@ -169,6 +170,7 @@ class Tiling:
     SideX = None
     SideY = None
     BestSoFar=[]
+    BestTime = None
     Draw=None
     visited = 0
 
@@ -183,6 +185,7 @@ class Tiling:
 
             active_sq   = parent.sqlist[0]
 
+            # Test corners
             if active_sq.x+active_sq.dx == Tiling.SideX:
                 # Right edge
                 if active_sq.y == 0 or active_sq.y+active_sq.dx == Tiling.SideY:
@@ -201,11 +204,12 @@ class Tiling:
                 # New best
                 Tiling.MinMoves = self.nmoves
                 Tiling.BestSoFar = self.Moves[:]
+                Tiling.BestTime = time.process_time() # time of best solution
                 if Globals.quiet == 0:
                     self.BestShow()
             else:
-                if self.coverage not in Tiling.squares and self.nmoves == Tiling.MinMoves - 1:
-                    # non square number of empties. At least 2 more needed
+                if Tiling.LeastSquares[self.coverage] + self.nmoves +2 > Tiling.MinMoves:
+                    # Can we get coverage in minimal moves?
                     raise PruneError
                 if parent.symmetry:
                     # still possibly symmetric
@@ -214,25 +218,27 @@ class Tiling:
                         if active_sq.y + active_sq.dx > active_sq.x:
                             # crosses diagonal
                             self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) ]
+                            self.symmetry = False
                         else:
                             # prune mirror
-                            self.symmetry = True
                             self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) and ( active_sq.y != m.x or active_sq.x != m.y or active_sq.dx >= m.dx ) ]
+                            self.symmetry = True
                     elif active_sq.x < active_sq.y:
                         # Lower left diagonal -- find mirror and test if size matches
                         self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) ]
                         self.symmetry = False
-                        for m in parent.Moves():
+                        for m in parent.Moves:
                             if active_sq.x == m.y and active_sq.y == m.x:
                                 self.symmetry = (active_sq.dx == m.dx)
                                 break ; 
                     else:
                         # On diagonal, just pass on symmetry state
-                        self.symmetry = True
                         self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) ]
+                        self.symmetry = True
                 else:
                     # already assymetric
                     self.sqlist = [ m for m in parent.sqlist[1:] if active_sq.disjoint(m) ]
+                    self.symmetry = parent.symmetry
 
                 #self.SqlistShow()
                 self.TryAll()
@@ -246,12 +252,12 @@ class Tiling:
             Tiling.SideY = sy
             Tiling.MinMoves = sx * sy
             Tiling.Size = sx * sy
-            Tiling.squares = set( [x*x for x in range(1,max(sx,sy))])
             if Globals.show:
                 Tiling.Draw = Draw(sx,sy)
             Tiling.BestSoFar = [ Square(x,y,1) for x in range( sx ) for y in range( sy ) ]
             if not Globals.maximum:
-                Globals.maximum = min( sx-1, sy-1 )
+                Globals.maximum = min( sx-1, sy-1 )            
+            self.LeastSquares( sx+4-Globals.maximum )
 
             # Base Tiling state
             self.nmoves = 0
@@ -302,12 +308,31 @@ class Tiling:
             # square 
             h = max( int(sx/2) , 1 )
             if Globals.maximum > h:
-                return [ Square(0,0,dx) for dx in range( min(Globals.maximum,sx-1),h,-1 ) ]+[ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(h,sx-x,sy-y,Globals.maximum), 1 ),0,-1 ) ]
+                r = [ Square(0,0,dx) for dx in range( min(Globals.maximum,sx-1),h,-1 ) ]+[ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(h,sx-x,sy-y,Globals.maximum), 1 ),0,-1 ) ]
             else:
-                return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(Globals.maximum,h,sx-x,sy-y), 1 ),0,-1 ) ]
-
+                r = [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(min(Globals.maximum,h,sx-x,sy-y), 1 ),0,-1 ) ]
+            return [ m for m in r if m.x != 0 or m.y != 0 or m.dx != 1 ]
         else:
             return [ Square(x,y,dx) for x in range( sx ) for y in range( sy ) for dx in range( max(1, min(Globals.maximum,sx-x,sy-y,sx-1,sy-1)),0,-1 ) ]
+            
+    def LeastSquares( self, size ):
+        """ Create a list of minimum nuber of squares that add up to that number """
+        max_remain = Tiling.Size - 4
+        trials = set( [i for i in range(1,max_remain+1) ] )
+
+        # Worst case
+        Tiling.LeastSquares = [ size for i in range( max_remain+1 ) ]
+
+        sq_try = [ sq*sq for sq in range(1,Globals.maximum+1)]
+        last_set = set(sq_try)
+        for i in last_set:
+            Tiling.LeastSquares[i] = 0
+
+        for moves in range(1,size):
+            last_set = set([ i+sq for i in last_set for sq in sq_try if i+sq <= max_remain ])
+            for i in last_set:
+                Tiling.LeastSquares[i] = min( Tiling.LeastSquares[i], moves )
+        
         
     @staticmethod
     def BestShow( ):
@@ -317,12 +342,14 @@ class Tiling:
                 
     @staticmethod
     def Report():
+        time_solve = time.process_time()
+        check_frac = Tiling.BestTime/time_solve
         if Globals.quiet == 1:
             Tiling.BestShow()
-        if Globals.quiet < 2:
-            print("Fewest squares for {:d}x{:d} = {:d}  Trials={:d} Time={:f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time.process_time()))
+        if Globals.quiet < 3:
+            print("Fewest squares for {:d}x{:d} = {:d}  Trials={:d} Time={:f} Solve/Check={:4.2f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time_solve,check_frac))
         else:
-            print("{:d},{:d},{:d},{:d},{:f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time.process_time()))
+            print("{:d},{:d},{:d},{:d},{:f},{:4.2f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time_solve,check_frac))
 
 class Filling:
     """ Holds the current position"""
@@ -451,13 +478,13 @@ class Filling:
 
 def CommandLine():
     """Setup argparser object to process the command line"""
-    cl = argparse.ArgumentParser(description="Fit Squares in large Square (rectangle) -- find fewest needed. 2018 by Paul H Alfille")
-    cl.add_argument("N",help="Width of large box (default 13)",type=int,nargs='?',default=13)
-    cl.add_argument("M",help="Height of large box (default Square)",type=int,nargs='?',default=None)
-    cl.add_argument("O",help="Depth of large box (default Cube)",type=int,nargs='?',default=None)
+    cl = argparse.ArgumentParser(description="Fit Squares in large Rectangle or Box) -- find fewest needed. 2018 by Paul H Alfille")
+    cl.add_argument("N",help="Width of large Rectangle/Box (default 13)",type=int,nargs='?',default=13)
+    cl.add_argument("M",help="Height of large Rectangle/Box (default Square)",type=int,nargs='?',default=None)
+    cl.add_argument("O",help="Depth of large Box (default Cube)",type=int,nargs='?',default=None)
     cl.add_argument("-m","--maximum",help="Maximum size of tiling square allowed",type=int,nargs='?',default=None)
     cl.add_argument("-s","--show",help="Show the solutions graphically",action="store_true")
-    cl.add_argument("-3","--cube",help="3-D solution -- cubes",action="store_true")
+    cl.add_argument("-3","--cube",help="3-D solution -- cubes in box",action="store_true")
     cl.add_argument("-q","--quiet",help="Suppress more and more displayed info (can be repeated)",action="count")
     return cl.parse_args()
 

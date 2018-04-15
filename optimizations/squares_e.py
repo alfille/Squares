@@ -325,7 +325,7 @@ class Tiling:
         check_frac = Tiling.BestTime/time_solve
         if Globals.quiet == 1:
             Tiling.BestShow()
-        if Globals.quiet < 2:
+        if Globals.quiet < 3:
             print("Fewest squares for {:d}x{:d} = {:d}  Trials={:d} Time={:f} Solve/Check={:4.2f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time_solve,check_frac))
         else:
             print("{:d},{:d},{:d},{:d},{:f},{:4.2f}".format(Tiling.SideX,Tiling.SideY,Tiling.MinMoves,Tiling.visited,time_solve,check_frac))
