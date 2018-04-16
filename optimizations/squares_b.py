@@ -162,7 +162,7 @@ class Tiling:
     SideX = None
     SideY = None
     BestSoFar=[]
-    BestTime = None
+    BestTime = 0.0
     Draw=None
     visited = 0
 
