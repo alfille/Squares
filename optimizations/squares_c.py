@@ -55,17 +55,19 @@ class Draw:
     side = 10
     N = None # X side
     M = None # Y side
-    Xmax = 6
-    Ymax = 5
+    Xmax = 4
+    Ymax = 3
     Current = -1
     win = None
+    textheight = 20
+    textfont = 14
     
     def __init__( self, N, M ):
         """ N for number of squares N*M """
         segmentX = Draw.side*(N+1)
-        segmentY = Draw.side*(M+1)
+        segmentY = Draw.side*(M+1)+Draw.textheight
 
-        Draw.win = GraphWin( "Square filling for {:d}X{:d}".format(N,M),segmentX*Draw.Xmax+Draw.side,segmentY*Draw.Ymax+Draw.side)
+        Draw.win = GraphWin( "Square filling for {:d}X{:d}  (max tile {:d}X{:d})".format(N,M,Globals.maximum,Globals.maximum),segmentX*Draw.Xmax+Draw.side,segmentY*Draw.Ymax+Draw.side)
 
         Draw.N = N
         Draw.M = M
@@ -77,7 +79,7 @@ class Draw:
         indexY = int (Draw.Current / Draw.Xmax ) % Draw.Ymax
 
         thisX = indexX * Draw.side * (Draw.N+1)
-        thisY = indexY * Draw.side * (Draw.M+1)
+        thisY = indexY * (Draw.side * (Draw.M+1) + Draw.textheight )
 
         for s in sqlist:
             x = Draw.side*(s.x+1)+thisX
@@ -86,6 +88,13 @@ class Draw:
             r = Rectangle(Point(x,y),Point(x+s.dx*Draw.side,y+s.dx*Draw.side))
             r.setFill(color_rgb(random.randint(0,255),random.randint(0,255),random.randint(0,255)))
             r.draw(Draw.win)
+            
+        sqtext = "{:d} tiles".format(len(sqlist))
+        t = Text( Point( thisX+(Draw.side*(2+Draw.N))/2, thisY+Draw.side*(Draw.M+1)+Draw.textheight-5), sqtext )
+        t.setSize(Draw.textfont)
+        t.setFace("times roman")
+        t.setFill("black")
+        t.draw(Draw.win) 
 
         Draw.win.update()
         #Draw.win.close()
