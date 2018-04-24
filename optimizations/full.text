@@ -50,3 +50,5 @@ Fewest squares for 26x26 = 4  Trials=3466344 Time=298.108394 Solve/Check=1.00
 Fewest squares for 27x27 = 6  Trials=5076493 Time=242.791864 Solve/Check=0.99
 4 < 0x0-14 > < 0x14-14 > < 14x0-14 > < 14x14-14 >
 Fewest squares for 28x28 = 4  Trials=2979629 Time=138.048870 Solve/Check=1.00
+14 < 0x0-17 > < 0x17-12 > < 12x17-4 > < 12x21-8 > < 16x17-2 > < 16x19-2 > < 17x0-12 > < 17x12-4 > < 17x16-1 > < 18x16-3 > < 18x19-2 > < 20x19-1 > < 20x20-9 > < 21x12-8 >
+Fewest squares for 29x29 = 14  Trials=280381690 Time=183976.235293 Solve/Check=0.06
