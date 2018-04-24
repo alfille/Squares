@@ -14,8 +14,9 @@ void SetupSQ( void )
 {
     int i;
     for ( i=0 ; i<MAX_MM ; ++i ) {
-        SQ[i] = (i+1)*(i+1)*(i+1) ;
-        if ( i < 10 ) printf("%d->%d\n",i,SQ[i]) ;
+        SQ[i] = (i+1)*(i+1) ; // squares
+        //SQ[i] = (i+1)*(i+1)*(i+1) ; // cubes
+//        if ( i < 10 ) printf("%d->%d\n",i,SQ[i]) ;
     }
 }
 
